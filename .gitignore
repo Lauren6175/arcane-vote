@@ -1,0 +1,26 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+fhevmTemp
+deployments
+dist
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.env
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+
