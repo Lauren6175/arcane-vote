@@ -1,0 +1,15 @@
+node_modules
+artifacts
+cache
+coverage
+dist
+fhevmTemp
+types
+typechain
+typechain-types
+deployments
+frontend
+*.json
+*.sol
+*.md
+
