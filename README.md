@@ -6,7 +6,7 @@ An anonymous voting system built with Fully Homomorphic Encryption (FHE) for ent
 
 **Deployed Application**: [https://arcane-vote.vercel.app/](https://arcane-vote.vercel.app/)
 
-📹 **Demo Video**: [Watch the demo](./arcane-vote.mp4)
+📹 **Demo Video**: [Watch the demo](https://github.com/Lauren6175/arcane-vote/raw/main/arcane-vote.mp4)
 
 ## Features
 
@@ -116,151 +116,17 @@ npm install
 npm run dev
 ```
 
-## 🔐 Core Smart Contract
+## Smart Contract
 
 ### PrivateVoting.sol
 
-The main contract implements fully encrypted voting using Zama's FHEVM:
+The main contract implementing the private voting system with the following key functions:
 
-```solidity
-contract PrivateVoting is SepoliaConfig {
-    struct Poll {
-        address creator;
-        string question;
-        string[] options;
-        euint32[] voteCounts;    // Encrypted vote counts
-        uint256 startTime;
-        uint256 endTime;
-        bool active;
-    }
-    
-    mapping(uint256 => Poll) public polls;
-    mapping(uint256 => mapping(address => bool)) public hasVoted;
-    
-    // Create a new encrypted poll
-    function createPoll(
-        string memory question,
-        string[] memory options,
-        uint256 duration
-    ) external returns (uint256 pollId);
-    
-    // Submit encrypted vote
-    function vote(
-        uint256 pollId,
-        bytes32 encryptedVoteHandle,
-        bytes calldata encryptedVoteProof
-    ) external;
-    
-    // Get encrypted result (only for authorized decryptors)
-    function getEncryptedVoteCount(
-        uint256 pollId,
-        uint256 optionIndex
-    ) external view returns (euint32);
-}
-```
-
-**Key Privacy Features:**
-- ✅ Vote counts remain encrypted throughout voting period
-- ✅ Individual votes are never revealed
-- ✅ Homomorphic addition of encrypted votes
-- ✅ Results only accessible to authorized decryptors
-
-## 🔒 Encryption & Decryption Flow
-
-### Client-Side Encryption
-
-Before submitting a vote, the frontend encrypts the user's choice:
-
-```typescript
-// 1. Initialize FHEVM instance
-const fhevmInstance = await createInstance({
-  chainId: sepoliaChainId,
-  publicKey: await contract.getFhevmPublicKey()
-});
-
-// 2. Encrypt the vote option
-const encryptedInput = await fhevmInstance.createEncryptedInput(
-  contractAddress,
-  userAddress
-);
-encryptedInput.add32(1); // Vote for option 1
-const encryptedVote = await encryptedInput.encrypt();
-
-// 3. Submit encrypted vote to contract
-await contract.vote(
-  pollId,
-  encryptedVote.handles[0],    // Encrypted handle
-  encryptedVote.inputProof      // Zero-knowledge proof
-);
-```
-
-### On-Chain Homomorphic Operations
-
-The smart contract performs operations on encrypted data without decryption:
-
-```solidity
-// Import encrypted vote from user
-euint32 encryptedVote = TFHE.asEuint32(encryptedVoteHandle, encryptedVoteProof);
-
-// Validate vote is within valid range
-ebool isValid = TFHE.le(encryptedVote, TFHE.asEuint32(1));
-
-// Homomorphically add to vote count
-poll.voteCounts[optionIndex] = TFHE.add(
-    poll.voteCounts[optionIndex],
-    TFHE.select(isValid, encryptedVote, TFHE.asEuint32(0))
-);
-```
-
-### Authorized Decryption
-
-Only authorized decryptors can view results:
-
-```solidity
-function allowDecryptorAccess(
-    uint256 pollId,
-    uint256 optionIndex,
-    address decryptor
-) external {
-    require(msg.sender == polls[pollId].creator, "Not authorized");
-    
-    // Grant decryption permission
-    TFHE.allow(polls[pollId].voteCounts[optionIndex], decryptor);
-}
-
-function getEncryptedVoteCount(
-    uint256 pollId,
-    uint256 optionIndex
-) external view returns (euint32) {
-    require(hasDecryptionAccess(pollId, optionIndex, msg.sender), "No access");
-    return polls[pollId].voteCounts[optionIndex];
-}
-```
-
-### Privacy Guarantees
-
-| Data | During Voting | After Poll Closes |
-|------|--------------|-------------------|
-| **Individual Votes** | ✅ Encrypted (`euint32`) | ✅ Never revealed |
-| **Vote Counts** | ✅ Encrypted (`euint32`) | ✅ Encrypted (only authorized can decrypt) |
-| **Voter Participation** | ⚠️ Public (address recorded) | ⚠️ Public |
-| **Homomorphic Operations** | ✅ Add/Compare without decryption | N/A |
-
-### Key Homomorphic Operations
-
-```solidity
-// 1. Encrypted comparison
-ebool isEqual = TFHE.eq(encryptedVote, TFHE.asEuint32(optionIndex));
-
-// 2. Encrypted addition
-euint32 newCount = TFHE.add(currentCount, increment);
-
-// 3. Conditional selection
-euint32 result = TFHE.select(condition, valueIfTrue, valueIfFalse);
-
-// 4. Less-than comparison
-ebool isLessThan = TFHE.le(encryptedVote, maxValue);
-```
+- `createPoll(title, description, options, duration)`: Create a new voting poll
+- `vote(pollId, optionIndex, encryptedValue, proof)`: Cast an encrypted vote
+- `closePoll(pollId)`: Close a poll
+- `getEncryptedVoteCount(pollId, optionIndex)`: Get encrypted vote count (authorized only)
+- `allowDecryptorAccess(pollId, optionIndex, decryptor)`: Grant decryption access
 
 ## Security
 
